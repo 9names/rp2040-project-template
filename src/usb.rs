@@ -405,12 +405,15 @@ impl UsbDevice {
     }
 
     fn handle_setup_packet(&mut self) {
-        debug!("- Setup packet");
-
+        info!("- Setup packet");
+        let mut buf = [0u8; 10];
+        let mut buf = ByteMutWriter::new(&mut buf[..]);
+        buf.clear();
         // read packet (first 8 bytes from DPRAM)
         let setup_packet = UsbSetupPacket::from_raw(&self.dpram.setup_packet);
-        //setup_packet.
-        //debug!("Usb setup: {:?}", setup_packet);
+        // write!(&mut buf, "{:?}", setup_packet).unwrap();
+        // debug!("Usb setup: {:?}", buf.as_str());
+        // buf.clear();
 
         let mut ep0_in_config = self.get_endpoint_configuration_mut(EP0_IN_ADDR).unwrap();
         ep0_in_config.next_pid = 1;
@@ -428,12 +431,8 @@ impl UsbDevice {
                 if req == USB_REQUEST_GET_DESCRIPTION {
                     let descriptor_type = setup_packet.wValue >> 8;
 
-                    let mut buf = [0u8; 10];
-                    let mut buf = ByteMutWriter::new(&mut buf[..]);
-                    buf.clear();
-
                     write!(&mut buf, "{:x}", descriptor_type).unwrap();
-                    debug!("  Device descriptor: {:?}", buf.as_str());
+                    info!("  Device descriptor: {:?}", buf.as_str());
 
                     match descriptor_type {
                         USB_DT_DEVICE => self.handle_device_descriptor(&setup_packet),
@@ -443,7 +442,7 @@ impl UsbDevice {
                     }
                 }
             }
-            _ => debug!("Other Request: {:?}", req_direction), // Ignore other requests
+            _ => info!("Other Request: {:?}", req_direction), // Ignore other requests
         }
     }
 
@@ -452,7 +451,7 @@ impl UsbDevice {
         self.dev_addr = (packet.wValue & 0xff) as u8;
         self.should_set_address = true;
 
-        debug!("- Set device address: {:?}", self.dev_addr);
+        info!("- Set device address: {:?}", self.dev_addr);
 
         self.start_transfer(EP0_IN_ADDR, 0, None);
     }
