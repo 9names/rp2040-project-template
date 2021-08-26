@@ -19,6 +19,8 @@ use hal::{
     watchdog::Watchdog,
 };
 
+mod usb;
+
 #[link_section = ".boot2"]
 #[used]
 pub static BOOT2: [u8; 256] = rp2040_boot2::BOOT_LOADER_W25Q080;
@@ -45,7 +47,8 @@ fn main() -> ! {
     .ok()
     .unwrap();
 
-    let mut delay = cortex_m::delay::Delay::new(core.SYST, clocks.system_clock.freq().integer());
+    // Leaving this here so that clocks is used.
+    let mut _delay = cortex_m::delay::Delay::new(core.SYST, clocks.system_clock.freq().integer());
 
     let pins = hal::gpio::Pins::new(
         pac.IO_BANK0,
@@ -56,12 +59,25 @@ fn main() -> ! {
 
     let mut led_pin = pins.gpio25.into_push_pull_output();
 
+    let resets = pac.RESETS;
+    let usb_ctrl = pac.USBCTRL_REGS;
+
+    let mut usb_device = usb::usb_device_init(&resets, usb_ctrl);
+
+    // Wait for USB configuration
+    while !usb_device.configured() {
+        usb_device.poll();
+    }
+
+    /* Enable LED to verify we get here */
+    led_pin.set_high().unwrap();
+
+    info!("start transfer");
+    // Start to receive data from the Host
+    usb_device.start_transfer(usb::EP1_OUT_ADDR, 64, None);
+
+    info!("entering polling loop");
     loop {
-        info!("on!");
-        led_pin.set_high().unwrap();
-        delay.delay_ms(500);
-        info!("off!");
-        led_pin.set_low().unwrap();
-        delay.delay_ms(500);
+        usb_device.poll();
     }
 }
