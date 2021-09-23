@@ -4,14 +4,17 @@
 #![no_std]
 #![no_main]
 
+// alias for the bsp so we don't have to change as much code when changing targets
+use feather_rp2040 as target_bsp;
+
 use cortex_m_rt::entry;
 use defmt::*;
 use defmt_rtt as _;
 use embedded_hal::digital::v2::OutputPin;
 use embedded_time::fixed_point::FixedPoint;
 use panic_probe as _;
-use pico::hal::pac;
-use pico::{self, hal, Pins};
+use target_bsp::hal::pac;
+use target_bsp::{hal, Pins};
 
 use hal::{
     clocks::{init_clocks_and_plls, Clock},
@@ -21,7 +24,7 @@ use hal::{
 
 #[link_section = ".boot2"]
 #[used]
-pub static BOOT2: [u8; 256] = rp2040_boot2::BOOT_LOADER_W25Q080;
+pub static BOOT2: [u8; 256] = rp2040_boot2::BOOT_LOADER_GD25Q64CS;
 
 #[entry]
 fn main() -> ! {
@@ -32,7 +35,7 @@ fn main() -> ! {
     let sio = Sio::new(pac.SIO);
 
     let clocks = init_clocks_and_plls(
-        pico::XOSC_CRYSTAL_FREQ,
+        target_bsp::XOSC_CRYSTAL_FREQ,
         pac.XOSC,
         pac.CLOCKS,
         pac.PLL_SYS,
@@ -52,7 +55,7 @@ fn main() -> ! {
         &mut pac.RESETS,
     );
     // Set the LED to be an output
-    let mut led_pin = pins.led.into_push_pull_output();
+    let mut led_pin = pins.d13.into_push_pull_output();
 
     loop {
         info!("on!");
